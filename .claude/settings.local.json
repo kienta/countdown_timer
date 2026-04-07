@@ -3,7 +3,13 @@
     "allow": [
       "Bash(git init:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(flutter pub:*)",
+      "Bash(python -c \":*)",
+      "Bash(flutter test:*)",
+      "Bash(git rm:*)",
+      "Bash(flutter analyze:*)",
+      "Bash(find /c/Users/kienta/dev/countdown_timer_app/.dart_tool -path */flutter_local_notifications* -name *.dart)"
     ]
   }
 }
