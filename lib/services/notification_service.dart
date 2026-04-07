@@ -16,36 +16,33 @@ class NotificationService {
   Future<void> init() async {
     if (_initialized) return;
 
-    // Initialize local notifications
     if (!kIsWeb) {
-      if (Platform.isWindows) {
-        const windowsSettings = WindowsInitializationSettings(
-          appName: 'Countdown Timer',
-          appUserModelId: 'com.countdown.timer',
-        );
-        await _notifications.initialize(
-          const InitializationSettings(windows: windowsSettings),
-        );
-      } else if (Platform.isAndroid) {
-        const androidSettings =
-            AndroidInitializationSettings('@mipmap/ic_launcher');
-        await _notifications.initialize(
-          const InitializationSettings(android: androidSettings),
-        );
-      } else if (Platform.isIOS || Platform.isMacOS) {
-        const darwinSettings = DarwinInitializationSettings();
-        await _notifications.initialize(
-          const InitializationSettings(
-            iOS: darwinSettings,
-            macOS: darwinSettings,
-          ),
-        );
-      } else if (Platform.isLinux) {
-        const linuxSettings =
-            LinuxInitializationSettings(defaultActionName: 'Open');
-        await _notifications.initialize(
-          const InitializationSettings(linux: linuxSettings),
-        );
+      try {
+        if (Platform.isAndroid) {
+          const androidSettings =
+              AndroidInitializationSettings('@mipmap/ic_launcher');
+          await _notifications.initialize(
+            const InitializationSettings(android: androidSettings),
+          );
+        } else if (Platform.isIOS || Platform.isMacOS) {
+          const darwinSettings = DarwinInitializationSettings();
+          await _notifications.initialize(
+            const InitializationSettings(
+              iOS: darwinSettings,
+              macOS: darwinSettings,
+            ),
+          );
+        } else if (Platform.isLinux) {
+          const linuxSettings =
+              LinuxInitializationSettings(defaultActionName: 'Open');
+          await _notifications.initialize(
+            const InitializationSettings(linux: linuxSettings),
+          );
+        }
+        // Windows: flutter_local_notifications does not support Windows yet.
+        // Audio alarm still works via audioplayers.
+      } catch (e) {
+        debugPrint('Failed to init notifications: $e');
       }
     }
 
@@ -65,16 +62,15 @@ class NotificationService {
     required int id,
     required String title,
   }) async {
-    if (!_initialized) return;
+    if (!_initialized || kIsWeb) return;
 
     try {
+      // Skip notification on Windows (not supported by flutter_local_notifications)
+      if (Platform.isWindows) return;
+
       NotificationDetails? details;
 
-      if (!kIsWeb && Platform.isWindows) {
-        details = const NotificationDetails(
-          windows: WindowsNotificationDetails(),
-        );
-      } else if (!kIsWeb && Platform.isAndroid) {
+      if (Platform.isAndroid) {
         details = const NotificationDetails(
           android: AndroidNotificationDetails(
             'timer_finished',
@@ -84,12 +80,12 @@ class NotificationService {
             priority: Priority.high,
           ),
         );
-      } else if (!kIsWeb && (Platform.isIOS || Platform.isMacOS)) {
+      } else if (Platform.isIOS || Platform.isMacOS) {
         details = const NotificationDetails(
           iOS: DarwinNotificationDetails(),
           macOS: DarwinNotificationDetails(),
         );
-      } else if (!kIsWeb && Platform.isLinux) {
+      } else if (Platform.isLinux) {
         details = const NotificationDetails(
           linux: LinuxNotificationDetails(),
         );
