@@ -2,11 +2,13 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import '../models/timer_model.dart';
 import 'database_service.dart';
+import 'notification_service.dart';
 
 enum TimerSortOption { newestFirst, oldestFirst, nameAZ, remaining, statusFirst }
 
 class TimerService extends ChangeNotifier {
   final DatabaseService _db = DatabaseService();
+  final NotificationService _notify = NotificationService();
   List<TimerModel> _timers = [];
   Timer? _tickTimer;
   int _tickCount = 0;
@@ -54,6 +56,7 @@ class TimerService extends ChangeNotifier {
 
   Future<void> init() async {
     await _db.init();
+    await _notify.init();
     await loadTimers();
     _startTicking();
   }
@@ -208,6 +211,8 @@ class TimerService extends ChangeNotifier {
     t.elapsedSecs = t.totalSeconds;
     t.savedAt = DateTime.now().millisecondsSinceEpoch;
     _saveTimer(t);
+    _notify.playAlarm();
+    _notify.showTimerFinishedNotification(id: t.id, title: t.title);
     notifyListeners();
   }
 
