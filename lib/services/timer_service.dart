@@ -3,13 +3,52 @@ import 'package:flutter/foundation.dart';
 import '../models/timer_model.dart';
 import 'database_service.dart';
 
+enum TimerSortOption { newestFirst, oldestFirst, nameAZ, remaining, statusFirst }
+
 class TimerService extends ChangeNotifier {
   final DatabaseService _db = DatabaseService();
   List<TimerModel> _timers = [];
   Timer? _tickTimer;
   int _tickCount = 0;
+  TimerSortOption _sortOption = TimerSortOption.newestFirst;
 
   List<TimerModel> get timers => _timers;
+
+  TimerSortOption get sortOption => _sortOption;
+
+  void setSortOption(TimerSortOption option) {
+    _sortOption = option;
+    notifyListeners();
+  }
+
+  List<TimerModel> get sortedTimers {
+    final sorted = List<TimerModel>.from(_timers);
+    switch (_sortOption) {
+      case TimerSortOption.newestFirst:
+        sorted.sort((a, b) => (b.createdAt ?? 0).compareTo(a.createdAt ?? 0));
+      case TimerSortOption.oldestFirst:
+        sorted.sort((a, b) => (a.createdAt ?? 0).compareTo(b.createdAt ?? 0));
+      case TimerSortOption.nameAZ:
+        sorted.sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
+      case TimerSortOption.remaining:
+        sorted.sort((a, b) => a.remainSeconds.compareTo(b.remainSeconds));
+      case TimerSortOption.statusFirst:
+        sorted.sort((a, b) {
+          final aOrder = _statusOrder(a);
+          final bOrder = _statusOrder(b);
+          if (aOrder != bOrder) return aOrder.compareTo(bOrder);
+          return a.remainSeconds.compareTo(b.remainSeconds);
+        });
+    }
+    return sorted;
+  }
+
+  int _statusOrder(TimerModel t) {
+    if (t.running && !t.finished) return 0;
+    if (!t.running && !t.finished && t.elapsedSecs > 0) return 1;
+    if (!t.running && !t.finished) return 2;
+    return 3; // finished
+  }
 
   int get runningCount => _timers.where((t) => t.running && !t.finished).length;
 

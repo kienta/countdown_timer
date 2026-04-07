@@ -109,6 +109,13 @@ class _Toolbar extends StatelessWidget {
                 );
               },
             ),
+          const Spacer(),
+          Consumer<TimerService>(
+            builder: (_, service, __) => _SortDropdown(
+              value: service.sortOption,
+              onChanged: (o) => service.setSortOption(o),
+            ),
+          ),
         ],
       ),
     );
@@ -122,7 +129,7 @@ class _TimerList extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<TimerService>(
       builder: (context, service, _) {
-        final timers = service.timers;
+        final timers = service.sortedTimers;
 
         if (timers.isEmpty) {
           return Center(
@@ -202,6 +209,49 @@ class _TimerList extends StatelessWidget {
       onStart: () => service.startTimer(timer.id),
       onPause: () => service.pauseTimer(timer.id),
       onReset: () => service.resetTimer(timer.id),
+    );
+  }
+}
+
+class _SortDropdown extends StatelessWidget {
+  final TimerSortOption value;
+  final ValueChanged<TimerSortOption> onChanged;
+
+  const _SortDropdown({required this.value, required this.onChanged});
+
+  static const _labels = {
+    TimerSortOption.newestFirst: 'Mới nhất',
+    TimerSortOption.oldestFirst: 'Cũ nhất',
+    TimerSortOption.nameAZ: 'Tên A-Z',
+    TimerSortOption.remaining: 'Còn lại',
+    TimerSortOption.statusFirst: 'Đang chạy',
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 26,
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<TimerSortOption>(
+          value: value,
+          isDense: true,
+          icon: const Icon(Icons.swap_vert, size: 12, color: AppColors.muted),
+          dropdownColor: AppColors.surface,
+          style: const TextStyle(fontSize: 11, color: AppColors.muted),
+          items: TimerSortOption.values.map((o) {
+            return DropdownMenuItem(value: o, child: Text(_labels[o]!));
+          }).toList(),
+          onChanged: (v) {
+            if (v != null) onChanged(v);
+          },
+        ),
+      ),
     );
   }
 }
