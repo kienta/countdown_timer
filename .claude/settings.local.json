@@ -9,7 +9,8 @@
       "Bash(flutter test:*)",
       "Bash(git rm:*)",
       "Bash(flutter analyze:*)",
-      "Bash(find /c/Users/kienta/dev/countdown_timer_app/.dart_tool -path */flutter_local_notifications* -name *.dart)"
+      "Bash(find /c/Users/kienta/dev/countdown_timer_app/.dart_tool -path */flutter_local_notifications* -name *.dart)",
+      "Bash(git push:*)"
     ]
   }
 }

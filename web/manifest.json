@@ -1,6 +1,6 @@
 {
-    "name": "countdown_timer_app",
-    "short_name": "countdown_timer_app",
+    "name": "countdown_timer",
+    "short_name": "countdown_timer",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
