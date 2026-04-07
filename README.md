@@ -1,95 +1,149 @@
 # Countdown Timer
 
-Ung dung dem nguoc da nen tang (Android, iOS, Windows, macOS, Linux, Web) duoc xay dung bang Flutter.
+A cross-platform countdown timer application (Android, iOS, Windows, macOS, Linux, Web) built with Flutter.
 
-## Tinh nang
+## Features
 
-- Tao nhieu bo dem nguoc cung luc
-- Hien thi dong ho cat thoi gian voi hoat anh
-- Am thanh canh bao khi het gio
-- Thong bao he thong khi bo dem ket thuc
-- Sap xep danh sach bo dem (theo ten, thoi gian con lai, ngay tao)
-- Luu tru du lieu cuc bo voi SQLite
-- Giao dien toi (dark theme), ho tro responsive tren nhieu kich thuoc man hinh
+- Create and manage multiple countdown timers simultaneously
+- Animated hourglass visualization
+- Audio alarm when a timer finishes
+- System notification on timer completion
+- Sort timers by name, remaining time, or creation date
+- Local data persistence with SQLite
+- Dark theme with responsive layout across screen sizes
 
-## Yeu cau
+## Prerequisites
 
 - Flutter SDK >= 3.2.0
 - Dart SDK >= 3.2.0
-- (Windows) Visual Studio 2022 voi C++ desktop workload
-- (macOS) Xcode >= 14
-- (Linux) Cac goi: `clang`, `cmake`, `ninja-build`, `libgtk-3-dev`
+- **Windows**: Visual Studio 2022 with "Desktop development with C++" workload
+- **macOS**: Xcode >= 14
+- **Linux**: `clang`, `cmake`, `ninja-build`, `libgtk-3-dev`
+- **Android**: Android SDK & Android Studio
+- **iOS**: Xcode >= 14 (macOS only)
 
-## Cai dat
+## Installation
 
-1. Clone repository:
+1. Clone the repository:
 
 ```bash
 git clone <repo-url>
 cd countdown_timer
 ```
 
-2. Cai dat cac dependency:
+2. Install dependencies:
 
 ```bash
 flutter pub get
 ```
 
-3. Chay ung dung:
+3. Run the app in debug mode:
 
 ```bash
-# Chay tren thiet bi mac dinh
+# Default device
 flutter run
 
-# Chay tren Windows
+# Specific platform
 flutter run -d windows
-
-# Chay tren Chrome (web)
 flutter run -d chrome
-
-# Chay tren Android
 flutter run -d android
-
-# Chay tren iOS (chi tren macOS)
 flutter run -d ios
 ```
 
-## Su dung
+## Building Release Executables
 
-1. **Tao bo dem**: Nhan nut **+** o goc phai phia tren de tao bo dem moi. Nhap ten va thiet lap thoi gian (gio, phut, giay).
-2. **Bat dau/Tam dung**: Nhan vao the bo dem de mo man hinh dem nguoc. Su dung nut Play/Pause de dieu khien.
-3. **Dat lai**: Nhan nut Reset de dat lai bo dem ve thoi gian ban dau.
-4. **Sap xep**: Su dung dropdown "Sort by" tren thanh cong cu de sap xep danh sach bo dem.
-5. **Xoa**: Vuot hoac nhan nut xoa tren the bo dem de xoa bo dem.
-6. **Canh bao**: Khi bo dem ket thuc, ung dung se phat am thanh va hien thi thong bao he thong.
+### Windows (.exe)
 
-## Chay test
+```bash
+flutter build windows --release
+```
+
+Output: `build/windows/x64/runner/Release/countdown_timer.exe`
+
+### macOS (.app)
+
+```bash
+flutter build macos --release
+```
+
+Output: `build/macos/Build/Products/Release/countdown_timer.app`
+
+### Linux
+
+```bash
+flutter build linux --release
+```
+
+Output: `build/linux/x64/release/bundle/countdown_timer`
+
+### Android (.apk / .aab)
+
+```bash
+# APK (for direct installation)
+flutter build apk --release
+
+# App Bundle (for Google Play Store)
+flutter build appbundle --release
+```
+
+Output:
+- APK: `build/app/outputs/flutter-apk/app-release.apk`
+- AAB: `build/app/outputs/bundle/release/app-release.aab`
+
+### iOS (.ipa)
+
+```bash
+flutter build ipa --release
+```
+
+Output: `build/ios/ipa/countdown_timer.ipa`
+
+> **Note:** iOS builds require macOS with Xcode and a valid Apple Developer signing configuration.
+
+### Web
+
+```bash
+flutter build web --release
+```
+
+Output: `build/web/` (deploy this directory to any static hosting)
+
+## Usage
+
+1. **Create a timer** — Tap the **+** button in the top-right corner. Enter a name and set the duration (hours, minutes, seconds).
+2. **Start / Pause** — Tap a timer card to open the countdown screen. Use the Play/Pause button to control it.
+3. **Reset** — Tap the Reset button to restore the timer to its original duration.
+4. **Sort** — Use the "Sort by" dropdown on the toolbar to reorder the timer list.
+5. **Delete** — Swipe or tap the delete button on a timer card to remove it.
+6. **Alarm** — When a timer reaches zero, the app plays an audio alert and shows a system notification.
+
+## Running Tests
 
 ```bash
 flutter test
 ```
 
-## Cau truc du an
+## Project Structure
 
 ```
 lib/
-  main.dart                  # Diem vao ung dung
+  main.dart                   # App entry point
   models/
-    timer_model.dart         # Mo hinh du lieu Timer
+    timer_model.dart          # Timer data model
   screens/
-    launcher_screen.dart     # Man hinh chinh (danh sach bo dem)
-    timer_screen.dart        # Man hinh dem nguoc
+    launcher_screen.dart      # Main screen (timer list)
+    timer_screen.dart         # Countdown screen
   services/
-    database_service.dart    # Quan ly SQLite
-    timer_service.dart       # Logic quan ly bo dem
-    notification_service.dart # Am thanh & thong bao
+    database_service.dart     # SQLite database management
+    timer_service.dart        # Timer state management
+    notification_service.dart # Audio & system notifications
   theme/
-    app_theme.dart           # Cau hinh giao dien
+    app_theme.dart            # Theme configuration
   utils/
-    responsive.dart          # Ho tro responsive
-    time_utils.dart          # Tien ich xu ly thoi gian
+    responsive.dart           # Responsive layout utilities
+    time_utils.dart           # Time formatting helpers
   widgets/
-    create_timer_dialog.dart # Dialog tao bo dem
-    hourglass_widget.dart    # Widget dong ho cat
-    timer_card.dart          # The hien thi bo dem
+    create_timer_dialog.dart  # Create timer dialog
+    hourglass_widget.dart     # Hourglass animation widget
+    timer_card.dart           # Timer card widget
 ```
