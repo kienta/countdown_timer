@@ -5,7 +5,6 @@ class TimerModel {
   int totalSeconds;
   int remainSeconds;
   int elapsedSecs;
-  int fallenCount;
   String? targetValue;
   bool running;
   bool finished;
@@ -19,7 +18,6 @@ class TimerModel {
     this.totalSeconds = 0,
     this.remainSeconds = 0,
     this.elapsedSecs = 0,
-    this.fallenCount = 0,
     this.targetValue,
     this.running = false,
     this.finished = false,
@@ -35,7 +33,6 @@ class TimerModel {
       totalSeconds: (map['totalSeconds'] as int?) ?? 0,
       remainSeconds: (map['remainSeconds'] as int?) ?? 0,
       elapsedSecs: (map['elapsedSecs'] as int?) ?? 0,
-      fallenCount: (map['fallenCount'] as int?) ?? 0,
       targetValue: map['targetValue'] as String?,
       running: (map['running'] as int?) == 1,
       finished: (map['finished'] as int?) == 1,
@@ -52,7 +49,6 @@ class TimerModel {
       'totalSeconds': totalSeconds,
       'remainSeconds': remainSeconds,
       'elapsedSecs': elapsedSecs,
-      'fallenCount': fallenCount,
       'targetValue': targetValue,
       'running': running ? 1 : 0,
       'finished': finished ? 1 : 0,
@@ -68,7 +64,6 @@ class TimerModel {
     int? totalSeconds,
     int? remainSeconds,
     int? elapsedSecs,
-    int? fallenCount,
     String? targetValue,
     bool? running,
     bool? finished,
@@ -82,7 +77,6 @@ class TimerModel {
       totalSeconds: totalSeconds ?? this.totalSeconds,
       remainSeconds: remainSeconds ?? this.remainSeconds,
       elapsedSecs: elapsedSecs ?? this.elapsedSecs,
-      fallenCount: fallenCount ?? this.fallenCount,
       targetValue: targetValue ?? this.targetValue,
       running: running ?? this.running,
       finished: finished ?? this.finished,

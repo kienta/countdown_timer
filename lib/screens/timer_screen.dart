@@ -117,11 +117,11 @@ class _HorizontalLayout extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _CountdownSection(timer: timer, context: context),
+                _CountdownSection(timer: timer),
                 const SizedBox(height: 10),
                 _ProgressBarSection(timer: timer),
                 const SizedBox(height: 10),
-                _ElapsedSection(timer: timer, context: context),
+                _ElapsedSection(timer: timer),
               ],
             ),
           ),
@@ -242,9 +242,8 @@ class _VerticalLayout extends StatelessWidget {
 
 class _CountdownSection extends StatelessWidget {
   final TimerModel timer;
-  final BuildContext context;
 
-  const _CountdownSection({required this.timer, required this.context});
+  const _CountdownSection({required this.timer});
 
   @override
   Widget build(BuildContext context) {
@@ -264,9 +263,8 @@ class _CountdownSection extends StatelessWidget {
 
 class _ElapsedSection extends StatelessWidget {
   final TimerModel timer;
-  final BuildContext context;
 
-  const _ElapsedSection({required this.timer, required this.context});
+  const _ElapsedSection({required this.timer});
 
   @override
   Widget build(BuildContext context) {
