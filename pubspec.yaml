@@ -13,9 +13,13 @@ dependencies:
   sqflite_common_ffi: ^2.3.0+2
   path_provider: ^2.1.1
   path: ^1.8.3
+  ffi: ^2.1.0
   provider: ^6.1.1
   audioplayers: ^6.1.0
   flutter_local_notifications: ^18.0.1
+  desktop_multi_window: ^0.2.0
+  window_manager: ^0.4.0
+  tray_manager: ^0.2.0
 
 dev_dependencies:
   flutter_test:
@@ -26,3 +30,4 @@ flutter:
   uses-material-design: true
   assets:
     - assets/sounds/
+    - assets/app_icon.ico

@@ -1,7 +1,12 @@
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:desktop_multi_window/desktop_multi_window.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/timer_service.dart';
 import '../theme/app_theme.dart';
+import '../utils/app_logger.dart';
 import '../utils/responsive.dart';
 import '../widgets/timer_card.dart';
 import '../widgets/create_timer_dialog.dart';
@@ -298,25 +303,44 @@ void _openEditDialog(BuildContext context, timer) async {
   );
 }
 
-void _openTimerScreen(BuildContext context, int timerId) {
-  final isDesktop = Responsive.isDesktop(context);
+void _openTimerScreen(BuildContext context, int timerId) async {
+  final isDesktopPlatform = Platform.isWindows || Platform.isLinux || Platform.isMacOS;
 
-  if (isDesktop) {
-    // On desktop, show as a dialog/overlay
-    showDialog(
-      context: context,
-      builder: (_) => Dialog(
-        backgroundColor: Colors.transparent,
-        child: SizedBox(
-          width: 500,
-          height: 380,
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: TimerScreen(timerId: timerId),
-          ),
-        ),
-      ),
-    );
+  if (isDesktopPlatform) {
+    // On desktop, open a floating widget window for this timer.
+    final service = context.read<TimerService>();
+    final timer = service.timers.where((t) => t.id == timerId).firstOrNull;
+    if (timer == null) return;
+
+    // A widget for this timer already exists (possibly hidden by the user via
+    // its close button). Re-show that one instead of creating a duplicate.
+    if (service.hasWidget(timerId)) {
+      service.showWidget(timerId);
+      return;
+    }
+
+    try {
+      final window = await DesktopMultiWindow.createWindow(
+        jsonEncode({
+          'timerId': timerId,
+          'title': timer.title,
+          'timer': timer.toMap(),
+        }),
+      );
+      window
+        ..setFrame(const Offset(120, 120) & const Size(272, 182))
+        // Tag the OS window with a unique, invisible token so the widget's
+        // close button can find and close exactly this window (see
+        // closeWidgetWindow). The frameless, off-taskbar window shows no title.
+        ..setTitle('cdtwidget_${window.windowId}')
+        ..show();
+
+      // Register so the main window starts pushing live state to the widget.
+      service.registerWidget(timerId, window.windowId);
+    } catch (e, st) {
+      AppLogger.instance.error('Failed to open widget window', e, st,
+          {'timerId': timerId});
+    }
   } else {
     // On mobile/tablet, navigate to full screen
     Navigator.of(context).push(

@@ -1,3 +1,4 @@
+import 'package:desktop_multi_window/desktop_multi_window.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/timer_model.dart';
@@ -9,8 +10,10 @@ import '../widgets/hourglass_widget.dart';
 
 class TimerScreen extends StatelessWidget {
   final int timerId;
+  final bool isSubWindow;
+  final int? windowId;
 
-  const TimerScreen({super.key, required this.timerId});
+  const TimerScreen({super.key, required this.timerId, this.isSubWindow = false, this.windowId});
 
   @override
   Widget build(BuildContext context) {
@@ -25,7 +28,7 @@ class TimerScreen extends StatelessWidget {
                 child: Text('Timer not found', style: TextStyle(color: AppColors.muted)),
               );
             }
-            return _TimerContent(timer: timer, service: service);
+            return _TimerContent(timer: timer, service: service, isSubWindow: isSubWindow, windowId: windowId);
           },
         ),
       ),
@@ -36,8 +39,10 @@ class TimerScreen extends StatelessWidget {
 class _TimerContent extends StatelessWidget {
   final TimerModel timer;
   final TimerService service;
+  final bool isSubWindow;
+  final int? windowId;
 
-  const _TimerContent({required this.timer, required this.service});
+  const _TimerContent({required this.timer, required this.service, this.isSubWindow = false, this.windowId});
 
   @override
   Widget build(BuildContext context) {
@@ -46,7 +51,7 @@ class _TimerContent extends StatelessWidget {
     return Column(
       children: [
         // Title bar
-        _TitleBar(timer: timer),
+        _TitleBar(timer: timer, isSubWindow: isSubWindow, windowId: windowId),
 
         // Main content
         Expanded(
@@ -61,8 +66,18 @@ class _TimerContent extends StatelessWidget {
 
 class _TitleBar extends StatelessWidget {
   final TimerModel timer;
+  final bool isSubWindow;
+  final int? windowId;
 
-  const _TitleBar({required this.timer});
+  const _TitleBar({required this.timer, this.isSubWindow = false, this.windowId});
+
+  void _handleBack(BuildContext context) {
+    if (isSubWindow && windowId != null) {
+      WindowController.fromWindowId(windowId!).close();
+    } else {
+      Navigator.of(context).pop();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -76,8 +91,12 @@ class _TitleBar extends StatelessWidget {
       child: Row(
         children: [
           GestureDetector(
-            onTap: () => Navigator.of(context).pop(),
-            child: const Icon(Icons.arrow_back_ios, size: 16, color: AppColors.muted),
+            onTap: () => _handleBack(context),
+            child: Icon(
+              isSubWindow ? Icons.close : Icons.arrow_back_ios,
+              size: 16,
+              color: AppColors.muted,
+            ),
           ),
           const SizedBox(width: 8),
           Expanded(

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
@@ -9,6 +10,12 @@ class HourglassWidget extends StatefulWidget {
   final bool isDone;
   final bool isLow;
 
+  /// Animation frame interval in milliseconds. Larger = fewer repaints per
+  /// second = cheaper. The default (~30fps) is fine for a single on-screen
+  /// hourglass; floating widget windows pass a larger value because many of
+  /// them share one desktop UI thread and a 60fps loop each would freeze it.
+  final int frameMs;
+
   const HourglassWidget({
     super.key,
     this.size = 100,
@@ -16,90 +23,74 @@ class HourglassWidget extends StatefulWidget {
     this.isRunning = false,
     this.isDone = false,
     this.isLow = false,
+    this.frameMs = 33,
   });
 
   @override
   State<HourglassWidget> createState() => _HourglassWidgetState();
 }
 
-class _HourglassWidgetState extends State<HourglassWidget>
-    with TickerProviderStateMixin {
-  late AnimationController _waveController;
-  late AnimationController _floatController;
-  late AnimationController _glowController;
+class _HourglassWidgetState extends State<HourglassWidget> {
+  Timer? _timer;
+  double _t = 0; // accumulated animation time, in seconds
 
   @override
   void initState() {
     super.initState();
-    _waveController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 3),
-    )..repeat();
-
-    _floatController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 2500),
-    );
-
-    _glowController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1600),
-    );
-
-    _updateAnimations();
+    _sync();
   }
 
   @override
   void didUpdateWidget(HourglassWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.isDone != widget.isDone ||
-        oldWidget.isRunning != widget.isRunning) {
-      _updateAnimations();
+        oldWidget.isRunning != widget.isRunning ||
+        oldWidget.frameMs != widget.frameMs) {
+      _sync();
     }
   }
 
-  void _updateAnimations() {
-    if (widget.isDone) {
-      _floatController.repeat(reverse: true);
-      _glowController.repeat(reverse: true);
-    } else {
-      _floatController.stop();
-      _glowController.stop();
-    }
+  /// Run the repaint timer only while the sand flows (running) or during the
+  /// done celebration; freeze it otherwise. A single timer at [frameMs] drives
+  /// every phase, so an idle or paused widget costs nothing and a running one
+  /// costs only ~1000/frameMs repaints per second instead of a full 60fps.
+  void _sync() {
+    _timer?.cancel();
+    _timer = null;
+    final shouldAnimate = widget.isRunning || widget.isDone;
+    if (!shouldAnimate) return;
+    final dt = widget.frameMs / 1000.0;
+    _timer = Timer.periodic(Duration(milliseconds: widget.frameMs), (_) {
+      if (!mounted) return;
+      setState(() => _t += dt);
+    });
   }
 
   @override
   void dispose() {
-    _waveController.dispose();
-    _floatController.dispose();
-    _glowController.dispose();
+    _timer?.cancel();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: Listenable.merge([_waveController, _floatController, _glowController]),
-      builder: (context, child) {
-        final floatOffset = widget.isDone
-            ? sin(_floatController.value * pi * 2) * 5
-            : 0.0;
+    final wavePhase = (_t / 3.0) * 2 * pi; // one wave cycle every 3s
+    final floatOffset = widget.isDone ? sin((_t / 2.5) * 2 * pi) * 5 : 0.0;
+    final glowValue = widget.isDone ? (sin((_t / 1.6) * 2 * pi) + 1) / 2 : 0.0;
 
-        return Transform.translate(
-          offset: Offset(0, floatOffset),
-          child: CustomPaint(
-            size: Size(widget.size, widget.size * 1.55),
-            painter: _HourglassPainter(
-              progress: widget.progress,
-              wavePhase: _waveController.value * pi * 2,
-              isRunning: widget.isRunning,
-              isDone: widget.isDone,
-              isLow: widget.isLow,
-              glowValue: _glowController.value,
-            ),
-          ),
-        );
-      },
+    return Transform.translate(
+      offset: Offset(0, floatOffset),
+      child: CustomPaint(
+        size: Size(widget.size, widget.size * 1.55),
+        painter: _HourglassPainter(
+          progress: widget.progress,
+          wavePhase: wavePhase,
+          isRunning: widget.isRunning,
+          isDone: widget.isDone,
+          isLow: widget.isLow,
+          glowValue: glowValue,
+        ),
+      ),
     );
   }
 }

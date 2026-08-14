@@ -1,6 +1,9 @@
 import 'dart:async';
+import 'dart:convert';
+import 'package:desktop_multi_window/desktop_multi_window.dart';
 import 'package:flutter/foundation.dart';
 import '../models/timer_model.dart';
+import '../utils/app_logger.dart';
 import 'database_service.dart';
 import 'notification_service.dart';
 
@@ -13,6 +16,18 @@ class TimerService extends ChangeNotifier {
   Timer? _tickTimer;
   int _tickCount = 0;
   TimerSortOption _sortOption = TimerSortOption.newestFirst;
+
+  // Widget windows currently open: timerId -> desktop_multi_window windowId.
+  // The main window is the single source of truth and pushes live state to
+  // each open widget via DesktopMultiWindow.invokeMethod.
+  final Map<int, int> _widgetWindows = {};
+
+  // Widgets close their own native window. We can't be notified of that
+  // directly, so the main window periodically reconciles its map against the
+  // set of live sub-windows. This is a single IPC call per pass regardless of
+  // how many widgets are open (an earlier design polled every widget on a
+  // short interval, which saturated the shared UI thread and froze the app).
+  Timer? _reconcileTimer;
 
   List<TimerModel> get timers => _timers;
 
@@ -53,6 +68,96 @@ class TimerService extends ChangeNotifier {
   }
 
   int get runningCount => _timers.where((t) => t.running && !t.finished).length;
+
+  // ── Widget window sync (desktop multi-window IPC) ──────────────────────
+
+  /// Whether a widget window is currently open for [timerId].
+  bool hasWidget(int timerId) => _widgetWindows.containsKey(timerId);
+
+  /// Register an open widget window for [timerId] and push the current state.
+  void registerWidget(int timerId, int windowId) {
+    _widgetWindows[timerId] = windowId;
+    AppLogger.instance.info('Widget registered',
+        {'timerId': timerId, 'windowId': windowId});
+    _pushUpdate(timerId);
+    _ensureReconcile();
+  }
+
+  /// Re-show the (hidden) widget window for [timerId] and refresh its state.
+  /// Widgets are hidden rather than destroyed on "close" (destroying a
+  /// sub-window engine in this plugin version spins the CPU), so reopening a
+  /// timer just un-hides the existing window.
+  void showWidget(int timerId) {
+    final windowId = _widgetWindows[timerId];
+    if (windowId == null) return;
+    WindowController.fromWindowId(windowId).show();
+    _pushUpdate(timerId);
+  }
+
+  /// Push the latest state of [timerId] to its widget window, if any.
+  void _pushUpdate(int timerId) {
+    final windowId = _widgetWindows[timerId];
+    if (windowId == null) return;
+    final idx = _timers.indexWhere((t) => t.id == timerId);
+    if (idx < 0) return;
+    final payload = jsonEncode(_timers[idx].toMap());
+    DesktopMultiWindow.invokeMethod(windowId, 'update', payload).catchError((e) {
+      // Widget window is gone — stop tracking it.
+      _dropWidget(timerId, 'update failed: $e');
+    });
+  }
+
+  void _dropWidget(int timerId, String reason) {
+    if (_widgetWindows.remove(timerId) != null) {
+      AppLogger.instance.warn('Dropped widget window',
+          {'timerId': timerId, 'reason': reason});
+    }
+    if (_widgetWindows.isEmpty) {
+      _reconcileTimer?.cancel();
+      _reconcileTimer = null;
+    }
+  }
+
+  void _ensureReconcile() {
+    if (_reconcileTimer != null || _widgetWindows.isEmpty) return;
+    _reconcileTimer = Timer.periodic(
+        const Duration(seconds: 1), (_) => _reconcileWidgets());
+  }
+
+  /// Drop any widget whose native window the user has closed. One cheap IPC
+  /// call (`getAllSubWindowIds`) covers every widget, so cost does not grow
+  /// with the number of open widgets.
+  Future<void> _reconcileWidgets() async {
+    if (_widgetWindows.isEmpty) {
+      _reconcileTimer?.cancel();
+      _reconcileTimer = null;
+      return;
+    }
+    List<int> liveIds;
+    try {
+      liveIds = await DesktopMultiWindow.getAllSubWindowIds();
+    } catch (_) {
+      return; // transient — retry next pass
+    }
+    final live = liveIds.toSet();
+    final gone = _widgetWindows.entries
+        .where((e) => !live.contains(e.value))
+        .map((e) => e.key)
+        .toList();
+    for (final timerId in gone) {
+      _dropWidget(timerId, 'window closed by user');
+    }
+  }
+
+  /// Stop reconciling and forget all widget windows, called on app exit. We do
+  /// NOT call `WindowController.close()` here: destroying a sub-window engine in
+  /// this plugin version spins the CPU. The caller follows this with `exit(0)`,
+  /// and process termination reaps every window cleanly without that teardown.
+  Future<void> closeAllWidgets() async {
+    _reconcileTimer?.cancel();
+    _reconcileTimer = null;
+    _widgetWindows.clear();
+  }
 
   Future<void> init() async {
     await _db.init();
@@ -148,6 +253,7 @@ class TimerService extends ChangeNotifier {
       t2.savedAt = DateTime.now().millisecondsSinceEpoch;
       _saveTimer(t2);
       notifyListeners();
+      _pushUpdate(id);
       return;
     }
 
@@ -167,6 +273,7 @@ class TimerService extends ChangeNotifier {
     t.savedAt = DateTime.now().millisecondsSinceEpoch;
     _saveTimer(t);
     notifyListeners();
+    _pushUpdate(id);
   }
 
   void pauseTimer(int id) {
@@ -180,6 +287,7 @@ class TimerService extends ChangeNotifier {
     t.savedAt = DateTime.now().millisecondsSinceEpoch;
     _saveTimer(t);
     notifyListeners();
+    _pushUpdate(id);
   }
 
   void resetTimer(int id) {
@@ -202,6 +310,7 @@ class TimerService extends ChangeNotifier {
     t.savedAt = DateTime.now().millisecondsSinceEpoch;
     _saveTimer(t);
     notifyListeners();
+    _pushUpdate(id);
   }
 
   void _finishTimer(TimerModel t) {
@@ -214,6 +323,7 @@ class TimerService extends ChangeNotifier {
     _notify.playAlarm();
     _notify.showTimerFinishedNotification(id: t.id, title: t.title);
     notifyListeners();
+    _pushUpdate(t.id);
   }
 
   void _startTicking() {
@@ -240,6 +350,8 @@ class TimerService extends ChangeNotifier {
 
       if (t.remainSeconds <= 0) {
         _finishTimer(t);
+      } else {
+        _pushUpdate(t.id);
       }
     }
 
@@ -269,6 +381,7 @@ class TimerService extends ChangeNotifier {
   @override
   void dispose() {
     _tickTimer?.cancel();
+    _reconcileTimer?.cancel();
     super.dispose();
   }
 }
