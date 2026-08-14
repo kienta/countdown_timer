@@ -28,6 +28,9 @@ typedef _FindWindowDart = int Function(
 typedef _ShowWindowNative = Int32 Function(IntPtr hWnd, Int32 nCmdShow);
 typedef _ShowWindowDart = int Function(int hWnd, int nCmdShow);
 
+typedef _SetForegroundWindowNative = Int32 Function(IntPtr hWnd);
+typedef _SetForegroundWindowDart = int Function(int hWnd);
+
 final class _Rect extends Struct {
   @Int32()
   external int left;
@@ -50,6 +53,9 @@ typedef _SetWindowPosDart = int Function(int hWnd, int hWndInsertAfter, int x,
 const int _wmNcLButtonDown = 0x00A1;
 const int _htCaption = 2;
 const int _swHide = 0;
+const int _swShow = 5;
+const int _hwndTop = 0;
+const int _swpNoSize = 0x0001;
 const int _swpNoMove = 0x0002;
 const int _swpNoZOrder = 0x0004;
 const int _swpNoActivate = 0x0010;
@@ -69,6 +75,8 @@ final _findWindow =
     _user32?.lookupFunction<_FindWindowNative, _FindWindowDart>('FindWindowW');
 final _showWindow =
     _user32?.lookupFunction<_ShowWindowNative, _ShowWindowDart>('ShowWindow');
+final _setForegroundWindow = _user32?.lookupFunction<
+    _SetForegroundWindowNative, _SetForegroundWindowDart>('SetForegroundWindow');
 final _getWindowRect = _user32
     ?.lookupFunction<_GetWindowRectNative, _GetWindowRectDart>('GetWindowRect');
 final _setWindowPos = _user32
@@ -108,6 +116,28 @@ bool hideWidgetWindow(String titleToken) {
     if (hwnd == 0) return false;
     _showWindow?.call(hwnd, _swHide);
     return true;
+  } finally {
+    malloc.free(titlePtr);
+  }
+}
+
+/// Show the widget window tagged [titleToken] and raise it to the front of the
+/// normal (non-topmost) z-order, without stealing keyboard focus. Used when the
+/// user reopens a timer: since widgets are no longer always-on-top, a buried or
+/// hidden window must be surfaced explicitly. No-op off Windows.
+void showWidgetWindow(String titleToken) {
+  if (!Platform.isWindows) return;
+  final titlePtr = titleToken.toNativeUtf16();
+  try {
+    final hwnd = _findWindow?.call(nullptr, titlePtr) ?? 0;
+    if (hwnd == 0) return;
+    _showWindow?.call(hwnd, _swShow);
+    _setWindowPos?.call(hwnd, _hwndTop, 0, 0, 0, 0,
+        _swpNoMove | _swpNoSize | _swpNoActivate);
+    // Raise it above the currently active window too. Allowed here because the
+    // caller (main window reacting to a launcher tap) is on the foreground
+    // thread that also owns this widget window.
+    _setForegroundWindow?.call(hwnd);
   } finally {
     malloc.free(titlePtr);
   }

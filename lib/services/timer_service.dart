@@ -4,6 +4,7 @@ import 'package:desktop_multi_window/desktop_multi_window.dart';
 import 'package:flutter/foundation.dart';
 import '../models/timer_model.dart';
 import '../utils/app_logger.dart';
+import '../utils/native_window.dart';
 import 'database_service.dart';
 import 'notification_service.dart';
 
@@ -83,14 +84,15 @@ class TimerService extends ChangeNotifier {
     _ensureReconcile();
   }
 
-  /// Re-show the (hidden) widget window for [timerId] and refresh its state.
-  /// Widgets are hidden rather than destroyed on "close" (destroying a
-  /// sub-window engine in this plugin version spins the CPU), so reopening a
-  /// timer just un-hides the existing window.
+  /// Re-show the widget window for [timerId], bring it to the front and refresh
+  /// its state. Widgets are hidden rather than destroyed on "close" (destroying
+  /// a sub-window engine in this plugin version spins the CPU) and are no longer
+  /// always-on-top, so reopening a timer un-hides the existing window and raises
+  /// it above other windows.
   void showWidget(int timerId) {
     final windowId = _widgetWindows[timerId];
     if (windowId == null) return;
-    WindowController.fromWindowId(windowId).show();
+    showWidgetWindow('cdtwidget_$windowId');
     _pushUpdate(timerId);
   }
 

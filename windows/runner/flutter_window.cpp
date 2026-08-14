@@ -7,10 +7,13 @@
 
 namespace {
 
-// Turn a sub-window into a frameless, always-on-top desktop widget that is
-// hidden from the taskbar. (Dragging is initiated from Dart via a WM_NCLBUTTON-
-// DOWN/HTCAPTION message — the Flutter content sits in a child window, so a
-// top-level WM_NCHITTEST hook would never see the clicks.)
+// Turn a sub-window into a frameless desktop widget that is hidden from the
+// taskbar. It is NOT always-on-top: other applications can cover it like any
+// normal window; reopening the timer from the launcher brings it back to the
+// front (see showWidgetWindow in native_window.dart). (Dragging is initiated
+// from Dart via a WM_NCLBUTTONDOWN/HTCAPTION message — the Flutter content sits
+// in a child window, so a top-level WM_NCHITTEST hook would never see the
+// clicks.)
 void StyleAsWidget(HWND hwnd) {
   if (!hwnd) return;
   LONG style = GetWindowLong(hwnd, GWL_STYLE);
@@ -24,7 +27,9 @@ void StyleAsWidget(HWND hwnd) {
   ex &= ~WS_EX_APPWINDOW;
   SetWindowLong(hwnd, GWL_EXSTYLE, ex);
 
-  SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0,
+  // HWND_NOTOPMOST: apply the frame-style change and drop any topmost flag,
+  // leaving the widget in the normal (non-topmost) z-order band.
+  SetWindowPos(hwnd, HWND_NOTOPMOST, 0, 0, 0, 0,
                SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_FRAMECHANGED);
 }
 
